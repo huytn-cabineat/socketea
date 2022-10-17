@@ -33,8 +33,6 @@ io.on("connection", (socket) => {
     io.emit(listener.event, listener.data);
   });
 
-  socket.emit("toast", { description: "world" });
-
   socket.on("disconnect", (reason) => {
     console.log(`socket ${socket.id} disconnected due to ${reason}`);
   });
