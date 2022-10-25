@@ -25,18 +25,42 @@ interface Listener {
   data: unknown;
 }
 
+interface RegisterUser {
+  user: { id: string };
+  token: string;
+  id: string;
+  socket: string;
+}
+
+let users: Array<RegisterUser> = [];
+const sockets: { [user: string]: Array<string> } = {};
+
 io.on("connection", (socket) => {
   socket.on("emit", (listener: Listener) => {
     console.log(listener);
     io.emit(listener.event, listener.data);
   });
 
-  socket.on("register", (user) => {
-    console.log(user);
+  socket.on("register", (user: RegisterUser) => {
+    user.socket = socket.id;
+    users.push(user);
+    console.log(users.length, user);
+
+    if (sockets[user.id] && Array.isArray(sockets[user.id]))
+      sockets[user.id].push(socket.id);
+    else sockets[user.id] = [socket.id];
   });
 
   socket.on("disconnect", (reason) => {
-    console.log(`socket ${socket.id} disconnected due to ${reason}`);
+    users = users.filter((user) => user.socket !== socket.id);
+    const user = users.find((user) => user.socket == socket.id);
+    if (user && sockets[user.id] && Array.isArray(sockets[user.id])) {
+      sockets[user.id] = sockets[user.id].filter((id) => id !== socket.id);
+    }
+    console.log(
+      users.length,
+      `socket ${socket.id} disconnected due to ${reason}`
+    );
   });
 });
 
