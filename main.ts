@@ -26,11 +26,13 @@ interface Listener {
 }
 
 io.on("connection", (socket) => {
-  console.log(`socket ${socket.id} connected`);
-
   socket.on("emit", (listener: Listener) => {
     console.log(listener);
     io.emit(listener.event, listener.data);
+  });
+
+  socket.on("register", (user) => {
+    console.log(user);
   });
 
   socket.on("disconnect", (reason) => {
