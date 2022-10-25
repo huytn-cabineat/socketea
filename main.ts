@@ -25,15 +25,17 @@ interface Listener {
   data: unknown;
 }
 
-interface RegisterUser {
+interface Register {
   user: { id: string };
   token: string;
   id: string;
-  socket: string;
 }
 
-let users: Array<RegisterUser> = [];
-const sockets: { [user: string]: Array<string> } = {};
+interface User extends Register {
+  sockets: Array<string>;
+}
+
+let users: Array<User> = [];
 
 io.on("connection", (socket) => {
   socket.on("emit", (listener: Listener) => {
@@ -41,21 +43,39 @@ io.on("connection", (socket) => {
     io.emit(listener.event, listener.data);
   });
 
-  socket.on("register", (user: RegisterUser) => {
-    user.socket = socket.id;
-    users.push(user);
-    console.log(users.length, user);
+  socket.on("register", (register: Register) => {
+    if (!register.user) return;
+    // find user
+    const user = users.find((user) => user.user.id == register.user.id);
+    // remove user
+    users = users.filter((user) => user.user.id !== register.user.id);
 
-    if (sockets[user.id] && Array.isArray(sockets[user.id]))
-      sockets[user.id].push(socket.id);
-    else sockets[user.id] = [socket.id];
+    if (user) {
+      // modify user
+      if (!user.sockets.includes(socket.id)) {
+        user.sockets.push(socket.id);
+      }
+      // re push user
+      users.push(user);
+    } else {
+      // create user
+      users.push({ ...register, sockets: [socket.id] } as User);
+    }
+    console.log(users.length, register.user);
   });
 
   socket.on("disconnect", (reason) => {
-    users = users.filter((user) => user.socket !== socket.id);
-    const user = users.find((user) => user.socket == socket.id);
-    if (user && sockets[user.id] && Array.isArray(sockets[user.id])) {
-      sockets[user.id] = sockets[user.id].filter((id) => id !== socket.id);
+    // find user
+    const user = users.find((user) => user.sockets.includes(socket.id));
+    // remove
+    users = users.filter((user) => !user.sockets.includes(socket.id));
+
+    // modify user
+    if (user?.sockets) {
+      user.sockets = user?.sockets.filter((id) => id != socket.id);
+      if (user.sockets.length) {
+        users.push(user);
+      }
     }
     console.log(
       users.length,
